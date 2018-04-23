@@ -1,0 +1,228 @@
+wayland_version = meson.project_version().split('.')
+wayland_version_h = configuration_data()
+wayland_version_h.set('WAYLAND_VERSION', meson.project_version())
+wayland_version_h.set('WAYLAND_VERSION_MAJOR', wayland_version[0].to_int())
+wayland_version_h.set('WAYLAND_VERSION_MINOR', wayland_version[1].to_int())
+wayland_version_h.set('WAYLAND_VERSION_MICRO', wayland_version[2].to_int())
+configure_file(
+	input: 'wayland-version.h.in',
+	output: 'wayland-version.h',
+	configuration: wayland_version_h,
+	install: true,
+	install_dir: join_paths(get_option('prefix'), get_option('includedir'))
+)
+
+wayland_util = static_library(
+	'wayland-util',
+	sources: 'wayland-util.c'
+)
+
+wayland_util_dep = declare_dependency(
+	link_with: wayland_util,
+	include_directories: include_directories('.')
+)
+
+# wayland-scanner
+
+configure_file(
+	input: '../protocol/wayland.dtd',
+	output: 'wayland.dtd.embed',
+	copy: true
+)
+
+wayland_scanner_sources = [ 'scanner.c', 'dtddata.S' ]
+wayland_scanner_includes = [ root_inc, protocol_inc ]
+
+wayland_scanner = executable(
+	'wayland-scanner',
+	wayland_scanner_sources,
+	c_args: [ '-include', 'config.h' ],
+	include_directories: wayland_scanner_includes,
+	dependencies: [ scanner_deps, wayland_util_dep, ],
+	install: true
+)
+
+pkgconfig.generate(
+	name: 'Wayland Scanner',
+	description: 'Wayland scanner',
+	version: meson.project_version(),
+	variables: [
+		'datarootdir=' + join_paths('${prefix}', get_option('datadir')),
+		'pkgdatadir=' + join_paths('${datarootdir}', meson.project_name()),
+		'bindir=' + join_paths('${prefix}', get_option('bindir')),
+		'wayland_scanner=${bindir}/wayland-scanner'
+	],
+	filebase: 'wayland-scanner'
+)
+
+if meson.is_cross_build()
+	scanner_native_deps = [ dependency('expat', native: true) ]
+	scanner_c_args = []
+
+	if get_option('dtd_validation')
+		scanner_native_deps += dependency('libxml-2.0', native: true)
+		scanner_c_args += '-DHAVE_LIBXML'
+	endif
+
+	wayland_scanner_for_build = executable(
+		'wayland-scanner-for-build',
+		wayland_scanner_sources, 'wayland-util.c',
+		c_args: scanner_c_args,
+		include_directories: wayland_scanner_includes,
+		dependencies: scanner_native_deps,
+		native: true
+	)
+else
+	wayland_scanner_for_build = wayland_scanner
+endif
+
+if get_option('libraries')
+	mathlib_dep = cc.find_library('m', required: false)
+	rt_dep = dependency('threads', required: false)
+
+	wayland_private = static_library(
+		'wayland-private',
+		sources: [
+			'connection.c',
+			'wayland-os.c'
+		],
+		dependencies: [ ffi_dep, ]
+	)
+
+	wayland_private_dep = declare_dependency(
+		link_with: wayland_private,
+		include_directories: include_directories('.')
+	)
+
+	generated_headers = [
+		[ 'server header', ['server-header'], 'wayland-server-protocol.h', true ],
+		[ 'core server header', ['server-header', '-c'], 'wayland-server-protocol-core.h', false ],
+		[ 'client header', ['client-header'], 'wayland-client-protocol.h', true ],
+		[ 'core client header', ['client-header', '-c'], 'wayland-client-protocol-core.h', false ]
+	]
+
+	foreach gen: generated_headers
+		target_name = gen[0]
+		scanner_args = gen[1]
+		output_file = gen[2]
+		install_file = gen[3]
+		install_dir = join_paths(get_option('prefix'), get_option('includedir'))
+		var_name = output_file.underscorify()
+
+		target = custom_target(
+			target_name,
+			command: [
+				wayland_scanner_for_build, scanner_args,
+				'@INPUT@', '@OUTPUT@'
+			],
+			input: wayland_protocol_xml,
+			output: output_file,
+			install: install_file,
+			install_dir: install_dir
+		)
+
+		set_variable(var_name, target)
+	endforeach
+
+	wayland_protocol_c = custom_target(
+		'protocol source',
+		command: [
+			wayland_scanner_for_build, 'public-code', '@INPUT@', '@OUTPUT@'
+		],
+		input: wayland_protocol_xml,
+		output: 'wayland-protocol.c'
+	)
+
+	wayland_server = library(
+		'wayland-server',
+		sources: [
+			wayland_server_protocol_core_h,
+			wayland_server_protocol_h,
+			wayland_protocol_c,
+			'wayland-server.c',
+			'wayland-shm.c',
+			'event-loop.c'
+		],
+		version: '0.1.0',
+		dependencies: [
+			ffi_dep,
+			wayland_private_dep,
+			wayland_util_dep,
+			mathlib_dep,
+			rt_dep
+		],
+		include_directories: root_inc,
+		install: true
+	)
+
+	wayland_server_dep = declare_dependency(
+		link_with: wayland_server,
+		include_directories: [ root_inc, include_directories('.') ],
+		dependencies: [ ffi_dep, mathlib_dep, rt_dep ],
+		sources: [
+			wayland_server_protocol_core_h,
+			wayland_server_protocol_h
+		]
+	)
+
+	pkgconfig.generate(
+		wayland_server,
+		name: 'Wayland Server',
+		description: 'Server side implementation of the Wayland protocol',
+		version: meson.project_version(),
+		filebase: 'wayland-server',
+		variables: [
+			'datarootdir=' + join_paths('${prefix}', get_option('datadir')),
+			'pkgdatadir=' + join_paths('${datarootdir}', meson.project_name())
+		]
+	)
+
+	wayland_client = library(
+		'wayland-client',
+		sources: [
+			wayland_client_protocol_core_h,
+			wayland_client_protocol_h,
+			wayland_protocol_c,
+			'wayland-client.c'
+		],
+		version: '0.3.0',
+		dependencies: [
+			ffi_dep,
+			wayland_private_dep,
+			wayland_util_dep,
+			mathlib_dep,
+			rt_dep
+		],
+		include_directories: root_inc,
+		install: true
+	)
+
+	pkgconfig.generate(
+		wayland_client,
+		name: 'Wayland Client',
+		description: 'Wayland client side library',
+		version: meson.project_version(),
+		filebase: 'wayland-client',
+		variables: [
+			'datarootdir=' + join_paths('${prefix}', get_option('datadir')),
+			'pkgdatadir=' + join_paths('${datarootdir}', meson.project_name())
+		]
+	)
+
+	wayland_client_dep = declare_dependency(
+		link_with: wayland_client,
+		include_directories: [ root_inc, include_directories('.') ],
+		sources: [
+			wayland_client_protocol_core_h,
+			wayland_client_protocol_h
+		]
+	)
+
+	install_headers([
+		'wayland-util.h',
+		'wayland-server.h',
+		'wayland-server-core.h',
+		'wayland-client.h',
+		'wayland-client-core.h',
+	])
+endif
