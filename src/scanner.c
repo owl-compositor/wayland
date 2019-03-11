@@ -25,7 +25,6 @@
  * SOFTWARE.
  */
 
-#include "config.h"
 #include "wayland-version.h"
 
 #include <stdbool.h>
