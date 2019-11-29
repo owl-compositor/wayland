@@ -63,7 +63,7 @@ endif
 
 if get_option('libraries')
 	mathlib_dep = cc.find_library('m', required: false)
-	rt_dep = dependency('threads', required: false)
+	threads_dep = dependency('threads', required: false)
 
 	wayland_private = static_library(
 		'wayland-private',
@@ -134,7 +134,7 @@ if get_option('libraries')
 			wayland_private_dep,
 			wayland_util_dep,
 			mathlib_dep,
-			rt_dep
+			threads_dep
 		],
 		include_directories: root_inc,
 		install: true
@@ -143,7 +143,7 @@ if get_option('libraries')
 	wayland_server_dep = declare_dependency(
 		link_with: wayland_server,
 		include_directories: [ root_inc, include_directories('.') ],
-		dependencies: [ ffi_dep, mathlib_dep, rt_dep ],
+		dependencies: [ ffi_dep, mathlib_dep, threads_dep ],
 		sources: [
 			wayland_server_protocol_core_h,
 			wayland_server_protocol_h
@@ -176,7 +176,7 @@ if get_option('libraries')
 			wayland_private_dep,
 			wayland_util_dep,
 			mathlib_dep,
-			rt_dep
+			threads_dep
 		],
 		include_directories: root_inc,
 		install: true
