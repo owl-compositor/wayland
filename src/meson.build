@@ -8,7 +8,6 @@ configure_file(
 	input: 'wayland-version.h.in',
 	output: 'wayland-version.h',
 	configuration: wayland_version_h,
-	install: true,
 	install_dir: join_paths(get_option('prefix'), get_option('includedir'))
 )
 
