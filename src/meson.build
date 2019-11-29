@@ -118,24 +118,28 @@ if get_option('libraries')
 		output: 'wayland-protocol.c'
 	)
 
+	wayland_server_deps = [
+		ffi_dep,
+		wayland_private_dep,
+		wayland_util_dep,
+		mathlib_dep,
+		threads_dep,
+	]
+
+	wayland_server_sources = [
+		wayland_server_protocol_core_h,
+		wayland_server_protocol_h,
+		wayland_protocol_c,
+		'wayland-server.c',
+		'wayland-shm.c',
+		'event-loop.c'
+	]
+
 	wayland_server = library(
 		'wayland-server',
-		sources: [
-			wayland_server_protocol_core_h,
-			wayland_server_protocol_h,
-			wayland_protocol_c,
-			'wayland-server.c',
-			'wayland-shm.c',
-			'event-loop.c'
-		],
+		sources: wayland_server_sources,
 		version: '0.1.0',
-		dependencies: [
-			ffi_dep,
-			wayland_private_dep,
-			wayland_util_dep,
-			mathlib_dep,
-			threads_dep
-		],
+		dependencies: wayland_server_deps,
 		include_directories: root_inc,
 		install: true
 	)
@@ -162,22 +166,26 @@ if get_option('libraries')
 		]
 	)
 
+	wayland_client_deps = [
+		ffi_dep,
+		wayland_private_dep,
+		wayland_util_dep,
+		mathlib_dep,
+		threads_dep
+	]
+
+	wayland_client_sources = [
+		wayland_client_protocol_core_h,
+		wayland_client_protocol_h,
+		wayland_protocol_c,
+		'wayland-client.c'
+	]
+
 	wayland_client = library(
 		'wayland-client',
-		sources: [
-			wayland_client_protocol_core_h,
-			wayland_client_protocol_h,
-			wayland_protocol_c,
-			'wayland-client.c'
-		],
+		sources: wayland_client_sources,
 		version: '0.3.0',
-		dependencies: [
-			ffi_dep,
-			wayland_private_dep,
-			wayland_util_dep,
-			mathlib_dep,
-			threads_dep
-		],
+		dependencies: wayland_client_deps,
 		include_directories: root_inc,
 		install: true
 	)

@@ -1,20 +1,24 @@
+test_runner_deps = [
+	cc.find_library('dl', required: false),
+	dependency('threads'),
+	ffi_dep,
+	wayland_util_dep,
+	wayland_private_dep,
+	wayland_client_dep,
+	wayland_server_dep,
+]
+
+test_runner_sources = [
+	'test-runner.c',
+	'test-helpers.c',
+	'test-compositor.c',
+]
+
 test_runner = static_library(
 	'test-runner',
-	sources: [
-		'test-runner.c',
-		'test-helpers.c',
-		'test-compositor.c'
-	],
+	sources: test_runner_sources,
 	include_directories: [ root_inc, src_inc ],
-	dependencies: [
-		cc.find_library('dl', required: false),
-		dependency('threads'),
-		ffi_dep,
-		wayland_util_dep,
-		wayland_private_dep,
-		wayland_client_dep,
-		wayland_server_dep
-	]
+	dependencies: test_runner_deps,
 )
 
 test_runner_dep = declare_dependency(
