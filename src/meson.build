@@ -55,22 +55,8 @@ pkgconfig.generate(
 )
 
 if meson.is_cross_build()
-	scanner_native_deps = [ dependency('expat', native: true) ]
-	scanner_c_args = []
-
-	if get_option('dtd_validation')
-		scanner_native_deps += dependency('libxml-2.0', native: true)
-		scanner_c_args += '-DHAVE_LIBXML'
-	endif
-
-	wayland_scanner_for_build = executable(
-		'wayland-scanner-for-build',
-		wayland_scanner_sources, 'wayland-util.c',
-		c_args: scanner_c_args,
-		include_directories: wayland_scanner_includes,
-		dependencies: scanner_native_deps,
-		native: true
-	)
+	scanner_dep = dependency('wayland-scanner', native: true)
+	wayland_scanner_for_build = find_program(scanner_dep.get_pkgconfig_variable('wayland_scanner'))
 else
 	wayland_scanner_for_build = wayland_scanner
 endif
