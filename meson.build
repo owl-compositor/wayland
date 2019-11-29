@@ -26,13 +26,6 @@ add_project_arguments(
 	language: 'c'
 )
 
-cc_native = meson.get_compiler('c', native: true)
-add_project_arguments(
-	cc_native.get_supported_arguments(compiler_flags),
-	language: 'c',
-	native: true
-)
-
 foreach h: [ 'sys/prctl.h' ]
 	config_h.set('HAVE_' + h.underscorify().to_upper(), cc.has_header(h))
 endforeach
