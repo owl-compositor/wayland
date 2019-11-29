@@ -91,107 +91,63 @@ test(
 	],
 )
 
-# test name, extra sources, extra dependencies
-tests = [
-	[ 'array-test' ],
-	[
-		'client-test', [
-			wayland_server_protocol_h,
-		]
+tests = {
+	'array-test': [],
+	'client-test': [ wayland_server_protocol_h ],
+	'display-test': [
+		tests_server_protocol_h,
+		tests_client_protocol_c,
+		tests_protocol_c,
 	],
-	[
-		'display-test', [
-			tests_server_protocol_h,
-			tests_client_protocol_c,
-			tests_protocol_c,
-		],
+	'connection-test': [ wayland_server_protocol_h ],
+	'event-loop-test': [ wayland_server_protocol_h ],
+	'fixed-test': [],
+	'interface-test': [ wayland_client_protocol_h ],
+	'list-test': [],
+	'map-test': [],
+	'sanity-test' : [ wayland_server_protocol_h ],
+	'socket-test': [
+		wayland_client_protocol_h,
+		wayland_server_protocol_h,
 	],
-	[
-		'connection-test', [
-			wayland_server_protocol_h,
-		]
+	'queue-test': [
+		wayland_client_protocol_h,
+		wayland_server_protocol_h,
 	],
-	[
-		'event-loop-test', [
-			wayland_server_protocol_h,
-		]
+	'signal-test': [ wayland_server_protocol_h ],
+	'newsignal-test': [
+		# wayland-server.c is needed here to access wl_priv_* functions
+		files('../src/wayland-server.c'),
+		wayland_server_protocol_h,
 	],
-	[ 'fixed-test' ],
-	[
-		'interface-test', [
-			wayland_client_protocol_h,
-		]
+	'resources-test': [ wayland_server_protocol_core_h ],
+	'message-test': [
+		wayland_client_protocol_h,
+		wayland_server_protocol_h,
 	],
-	[ 'list-test' ],
-	[ 'map-test' ],
-	[
-		'sanity-test', [
-			wayland_server_protocol_h,
-		]
+	'compositor-introspection-test': [
+		wayland_client_protocol_h,
+		wayland_server_protocol_h,
 	],
-	[
-		'socket-test', [
-			wayland_client_protocol_h,
-			wayland_server_protocol_h,
-		]
+	'protocol-logger-test': [
+		wayland_server_protocol_core_h,
+		wayland_client_protocol_core_h,
 	],
-	[
-		'queue-test', [
-			wayland_client_protocol_h,
-			wayland_server_protocol_h,
-		]
+	'headers-test': [
+		'headers-protocol-test.c',
+		'headers-protocol-core-test.c',
+		wayland_server_protocol_core_h,
+		wayland_client_protocol_core_h,
 	],
-	[
-		'signal-test', [
-			wayland_server_protocol_h,
-		]
-	],
-	[
-		'newsignal-test', [
-			files('../src/wayland-server.c'),
-			wayland_server_protocol_h,
-		],
-	],
-	[
-		'resources-test', [
-			wayland_server_protocol_core_h,
-		],
-	],
-	[
-		'message-test', [
-			wayland_client_protocol_h,
-			wayland_server_protocol_h,
-		]
-	],
-	[	'compositor-introspection-test', [
-			wayland_client_protocol_h,
-			wayland_server_protocol_h,
-		]
-	],
-	[
-		'protocol-logger-test', [
-			wayland_server_protocol_core_h,
-			wayland_client_protocol_core_h,
-		],
-	],
-	[
-		'headers-test', [
-			'headers-protocol-test.c',
-			'headers-protocol-core-test.c',
-			wayland_server_protocol_core_h,
-			wayland_client_protocol_core_h,
-		],
-	],
-	[ 'os-wrappers-test' ],
-]
+	'os-wrappers-test': [],
+}
 
-foreach t: tests
-	t_name = t.get(0)
-	t_sources = [ t_name + '.c' ] + t.get(1, [])
-	t_deps = [test_runner_dep] + t.get(2, [])
-	bin = executable(t_name, t_sources, dependencies: t_deps)
+foreach test_name, test_extra_sources: tests
+	test_sources = [ test_name + '.c' ] + test_extra_sources
+	test_deps = [test_runner_dep]
+	bin = executable(test_name, test_sources, dependencies: test_deps)
 	test(
-		t_name,
+		test_name,
 		bin,
 		env: [
 			'TEST_SRC_DIR=@0@'.format(meson.current_source_dir()),
