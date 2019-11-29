@@ -37,7 +37,15 @@ foreach h: [ 'sys/prctl.h' ]
 	config_h.set('HAVE_' + h.underscorify().to_upper(), cc.has_header(h))
 endforeach
 
-foreach f: [ 'accept4', 'mkostemp', 'posix_fallocate', 'prctl', ]
+have_funcs = [
+	'accept4',
+	'mkostemp',
+	'posix_fallocate',
+	'prctl',
+	'memfd_create',
+	'strndup',
+]
+foreach f: have_funcs
 	config_h.set('HAVE_' + f.underscorify().to_upper(), cc.has_function(f))
 endforeach
 
