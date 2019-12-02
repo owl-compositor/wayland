@@ -52,23 +52,15 @@ gen_doxygen = find_program('gen-doxygen.py')
 
 subdir('xml')
 
-# formats = [ format_name, [ [ section_name, files ] ] ]
-formats = [
-	[
-		'html', [
-			[ 'Client', shared_files + client_files + extra_client_files, ],
-			[ 'Server', shared_files + server_files + extra_server_files, ],
-		]
-	],
-]
+formats = {
+	'html': {
+		'Client': shared_files + client_files + extra_client_files,
+		'Server': shared_files + server_files + extra_server_files,
+	},
+}
 
-foreach f: formats
-	f_name = f[0]
-	sections = f[1]
-
-	foreach s: sections
-		s_name = s[0]
-		s_files = s[1]
+foreach f_name, sections: formats
+	foreach s_name, s_files: sections
 		t_name = '@0@-@1@-doc'.format(f_name, s_name)
 
 		# We do not really need an output file, but Meson
