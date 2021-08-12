@@ -41,6 +41,10 @@
 #include "test-runner.h"
 #include "test-compositor.h"
 
+#ifndef SOCK_CLOEXEC
+#define SOCK_CLOEXEC 0
+#endif
+
 static const char message[] = "Hello, world";
 
 static struct wl_connection *

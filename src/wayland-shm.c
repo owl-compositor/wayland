@@ -60,6 +60,9 @@ struct wl_shm_pool {
 	struct wl_resource *resource;
 	int internal_refcount;
 	int external_refcount;
+#ifndef MREMAP_MAYMOVE
+	int fd;
+#endif
 	char *data;
 	int32_t size;
 	int32_t new_size;
@@ -98,7 +101,13 @@ shm_pool_finish_resize(struct wl_shm_pool *pool)
 	if (pool->size == pool->new_size)
 		return;
 
+#ifdef MREMAP_MAYMOVE
 	data = mremap(pool->data, pool->size, pool->new_size, MREMAP_MAYMOVE);
+#else
+	munmap(pool->data, pool->size);
+	data = mmap(NULL, pool->new_size, PROT_READ | PROT_WRITE, MAP_SHARED,
+		    pool->fd, 0);
+#endif
 	if (data == MAP_FAILED) {
 		wl_resource_post_error(pool->resource,
 				       WL_SHM_ERROR_INVALID_FD,
@@ -127,6 +136,9 @@ shm_pool_unref(struct wl_shm_pool *pool, bool external)
 		return;
 
 	munmap(pool->data, pool->size);
+#ifndef MREMAP_MAYMOVE
+	close(pool->fd);
+#endif
 	free(pool);
 }
 
@@ -310,7 +322,11 @@ shm_create_pool(struct wl_client *client, struct wl_resource *resource,
 				       strerror(errno));
 		goto err_free;
 	}
+#ifdef MREMAP_MAYMOVE
 	close(fd);
+#else
+	pool->fd = fd;
+#endif
 
 	pool->resource =
 		wl_resource_create(client, &wl_shm_pool_interface, 1, id);

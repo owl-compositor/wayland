@@ -24,6 +24,8 @@
  * SOFTWARE.
  */
 
+#include "config.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
@@ -147,6 +149,8 @@ TEST(event_loop_free_source_with_data)
 	assert(close(context.p2[1]) == 0);
 }
 
+#ifdef HAVE_SIGNALFD
+
 static int
 signal_callback(int signal_number, void *data)
 {
@@ -216,6 +220,10 @@ TEST(event_loop_multiple_same_signals)
 
 	wl_event_loop_destroy(loop);
 }
+
+#endif /* HAVE_SIGNALFD */
+
+#ifdef HAVE_TIMERFD
 
 static int
 timer_callback(void *data)
@@ -477,6 +485,8 @@ TEST(event_loop_timer_cancellation)
 
 	wl_event_loop_destroy(loop);
 }
+
+#endif /* HAVE_TIMERFD */
 
 struct event_loop_destroy_listener {
 	struct wl_listener listener;

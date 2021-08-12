@@ -38,6 +38,10 @@
 #include "wayland-server.h"
 #include "test-runner.h"
 
+#ifndef SOCK_CLOEXEC
+#define SOCK_CLOEXEC 0
+#endif
+
 struct client_destroy_listener {
 	struct wl_listener listener;
 	int done;

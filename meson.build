@@ -45,17 +45,27 @@ endforeach
 if get_option('libraries')
 	ffi_dep = dependency('libffi')
 
+	epoll_dep = []
+	if not cc.has_header('sys/epoll.h')
+		epoll_dep = dependency('epoll-shim')
+	endif
+
 	decls = [
-		{ 'header': 'sys/signalfd.h', 'symbol': 'SFD_CLOEXEC' },
-		{ 'header': 'sys/timerfd.h', 'symbol': 'TFD_CLOEXEC' },
-		{ 'header': 'time.h', 'symbol': 'CLOCK_MONOTONIC' },
+		{ 'header': 'sys/signalfd.h', 'symbol': 'SFD_CLOEXEC', 'variable': 'HAVE_SIGNALFD' },
+		{ 'header': 'sys/timerfd.h', 'symbol': 'TFD_CLOEXEC', 'variable': 'HAVE_TIMERFD' },
 	]
 
 	foreach d: decls
-		if not cc.has_header_symbol(d['header'], d['symbol'])
-			error('@0@ is needed to compile Wayland libraries'.format(d['symbol']))
-		endif
+		config_h.set(
+			d['variable'],
+			cc.has_header_symbol(d['header'], d['symbol'], dependencies: epoll_dep)
+		)
 	endforeach
+
+	config_h.set(
+		'HAVE_ITIMERSPEC',
+		cc.has_members('struct itimerspec', 'it_interval', 'it_value', dependencies: epoll_dep)
+	)
 
 	rt_dep = []
 	if not cc.has_function('clock_gettime', prefix: '#include <time.h>')

@@ -62,6 +62,8 @@ static int fall_back;
  * __interceptor_ and check at run time if they linked to anything or not.
 */
 
+#ifndef __APPLE__
+
 #define DECL(ret_type, func, ...) \
 	ret_type __interceptor_ ## func(__VA_ARGS__) __attribute__((weak)); \
 	static ret_type (*real_ ## func)(__VA_ARGS__);			\
@@ -70,6 +72,18 @@ static int fall_back;
 #define REAL(func) (__interceptor_ ## func) ?				\
 	__interceptor_ ## func :					\
 	(typeof(&__interceptor_ ## func))dlsym(RTLD_NEXT, #func)
+
+#else
+
+#define DECL(ret_type, func, ...) \
+	static ret_type (*real_ ## func)(__VA_ARGS__);	\
+	static int wrapped_calls_ ## func;
+
+#define REAL(func) (typeof(real_ ## func))dlsym(RTLD_NEXT, #func)
+
+#endif
+
+#undef fcntl
 
 DECL(int, socket, int, int, int);
 DECL(int, fcntl, int, int, ...);
@@ -91,10 +105,12 @@ socket(int domain, int type, int protocol)
 {
 	wrapped_calls_socket++;
 
+#ifdef SOCK_CLOEXEC
 	if (fall_back && (type & SOCK_CLOEXEC)) {
 		errno = EINVAL;
 		return -1;
 	}
+#endif
 
 	return real_socket(domain, type, protocol);
 }
@@ -140,10 +156,12 @@ recvmsg(int sockfd, struct msghdr *msg, int flags)
 {
 	wrapped_calls_recvmsg++;
 
+#ifdef MSG_CMSG_CLOEXEC
 	if (fall_back && (flags & MSG_CMSG_CLOEXEC)) {
 		errno = EINVAL;
 		return -1;
 	}
+#endif
 
 	return real_recvmsg(sockfd, msg, flags);
 }
@@ -252,8 +270,11 @@ struct marshal_data {
 static void
 setup_marshal_data(struct marshal_data *data)
 {
-	assert(socketpair(AF_UNIX,
-			  SOCK_STREAM | SOCK_CLOEXEC, 0, data->s) == 0);
+	int type = SOCK_STREAM;
+#ifdef SOCK_CLOEXEC
+	type |= SOCK_CLOEXEC;
+#endif
+	assert(socketpair(AF_UNIX, type, 0, data->s) == 0);
 
 	data->read_connection = wl_connection_create(data->s[0]);
 	assert(data->read_connection);

@@ -62,11 +62,13 @@ wl_os_socket_cloexec(int domain, int type, int protocol)
 {
 	int fd;
 
+#ifdef SOCK_CLOEXEC
 	fd = socket(domain, type | SOCK_CLOEXEC, protocol);
 	if (fd >= 0)
 		return fd;
 	if (errno != EINVAL)
 		return -1;
+#endif
 
 	fd = socket(domain, type, protocol);
 	return set_cloexec_or_close(fd);
@@ -77,11 +79,13 @@ wl_os_dupfd_cloexec(int fd, int minfd)
 {
 	int newfd;
 
+#ifdef F_DUPFD_CLOEXEC
 	newfd = fcntl(fd, F_DUPFD_CLOEXEC, minfd);
 	if (newfd >= 0)
 		return newfd;
 	if (errno != EINVAL)
 		return -1;
+#endif
 
 	newfd = fcntl(fd, F_DUPFD, minfd);
 	return set_cloexec_or_close(newfd);
@@ -121,6 +125,7 @@ recvmsg_cloexec_fallback(int sockfd, struct msghdr *msg, int flags)
 ssize_t
 wl_os_recvmsg_cloexec(int sockfd, struct msghdr *msg, int flags)
 {
+#ifdef MSG_CMSG_CLOEXEC
 	ssize_t len;
 
 	len = recvmsg(sockfd, msg, flags | MSG_CMSG_CLOEXEC);
@@ -128,6 +133,7 @@ wl_os_recvmsg_cloexec(int sockfd, struct msghdr *msg, int flags)
 		return len;
 	if (errno != EINVAL)
 		return -1;
+#endif
 
 	return recvmsg_cloexec_fallback(sockfd, msg, flags);
 }

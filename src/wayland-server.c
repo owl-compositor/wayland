@@ -78,7 +78,9 @@ struct wl_client {
 	struct wl_list link;
 	struct wl_map objects;
 	struct wl_priv_signal destroy_signal;
+#ifdef SCM_CREDENTIALS
 	struct ucred ucred;
+#endif
 	int error;
 	struct wl_priv_signal resource_created_signal;
 };
@@ -314,7 +316,11 @@ wl_resource_post_error(struct wl_resource *resource,
 static void
 destroy_client_with_error(struct wl_client *client, const char *reason)
 {
+#ifdef SCM_CREDENTIALS
 	wl_log("%s (pid %u)\n", reason, client->ucred.pid);
+#else
+	wl_log("%s\n", reason);
+#endif
 	wl_client_destroy(client);
 }
 
@@ -528,10 +534,12 @@ wl_client_create(struct wl_display *display, int fd)
 	if (!client->source)
 		goto err_client;
 
+#ifdef SCM_CREDENTIALS
 	len = sizeof client->ucred;
 	if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED,
 		       &client->ucred, &len) < 0)
 		goto err_source;
+#endif
 
 	client->connection = wl_connection_create(fd);
 	if (client->connection == NULL)
@@ -562,6 +570,7 @@ err_client:
 	return NULL;
 }
 
+#ifdef SCM_CREDENTIALS
 /** Return Unix credentials for the client
  *
  * \param client The display object
@@ -592,6 +601,7 @@ wl_client_get_credentials(struct wl_client *client,
 	if (gid)
 		*gid = client->ucred.gid;
 }
+#endif
 
 /** Get the file descriptor for the client
  *

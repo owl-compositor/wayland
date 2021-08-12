@@ -25,19 +25,24 @@
 
 #define _GNU_SOURCE
 
+#include "config.h"
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <signal.h>
 #include <string.h>
 #include <assert.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <limits.h>
 #include <sys/ptrace.h>
+#ifdef HAVE_SYS_PRCTL
 #include <sys/prctl.h>
+#endif
 #ifndef PR_SET_PTRACER
 # define PR_SET_PTRACER 0x59616d61
 #endif
@@ -57,7 +62,12 @@ static int timeouts_enabled = 1;
 /* set to one if the output goes to the terminal */
 static int is_atty = 0;
 
+#ifndef __APPLE__
 extern const struct test __start_test_section, __stop_test_section;
+#else
+extern const struct test __start_test_section __asm("section$start$__RODATA$test_section");
+extern const struct test __stop_test_section __asm("section$end$__RODATA$test_section");
+#endif
 
 static const struct test *
 find_test(const char *name)
@@ -234,6 +244,10 @@ is_debugger_attached(void)
 	pid_t pid;
 	int pipefd[2];
 
+#ifndef PTRACE_ATTACH
+	return 0;
+#endif
+
 	if (pipe(pipefd) == -1) {
 		perror("pipe");
 		return 0;
@@ -255,16 +269,19 @@ is_debugger_attached(void)
 		close(pipefd[0]);
 		if (buf == '-')
 			_exit(1);
+#ifdef PTRACE_ATTACH
 		if (ptrace(PTRACE_ATTACH, ppid, NULL, NULL) != 0)
 			_exit(1);
 		if (!waitpid(-1, NULL, 0))
 			_exit(1);
 		ptrace(PTRACE_CONT, NULL, NULL);
 		ptrace(PTRACE_DETACH, ppid, NULL, NULL);
+#endif
 		_exit(0);
 	} else {
 		close(pipefd[0]);
 
+#ifdef HAVE_SYS_PRCTL
 		/* Enable child to ptrace the parent process */
 		rc = prctl(PR_SET_PTRACER, pid);
 		if (rc != 0 && errno != EINVAL) {
@@ -276,6 +293,9 @@ is_debugger_attached(void)
 			perror("prctl");
 			write(pipefd[1], "-", 1);
 		} else {
+#else
+		if (1) {
+#endif
 			/* Signal to client that parent is ready by passing '+' */
 			write(pipefd[1], "+", 1);
 		}

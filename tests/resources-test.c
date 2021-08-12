@@ -31,6 +31,10 @@
 #include "wayland-server.h"
 #include "test-runner.h"
 
+#ifndef SOCK_CLOEXEC
+#define SOCK_CLOEXEC 0
+#endif
+
 TEST(create_resource_tst)
 {
 	struct wl_display *display;

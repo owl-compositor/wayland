@@ -313,7 +313,10 @@ wl_connection_flush(struct wl_connection *connection)
 
 		do {
 			len = sendmsg(connection->fd, &msg,
-				      MSG_NOSIGNAL | MSG_DONTWAIT);
+#ifdef MSG_NOSIGNAL
+				      MSG_NOSIGNAL |
+#endif
+				      MSG_DONTWAIT);
 		} while (len == -1 && errno == EINTR);
 
 		if (len == -1)
